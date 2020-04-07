@@ -324,34 +324,34 @@ class imagePostProcessing:
     
     def getStrokedImage(self, k, image, imageName):
 
-        #if k == 'poor':
-        img = cv2.medianBlur(image,5) 
-        a = img.max()
-        _, thresh = cv2.threshold(img, a/2+60, a,cv2.THRESH_BINARY)
-        thresh_inv = cv2.bitwise_not(thresh)
-        kernel = cv2.getStructuringElement(cv2.MORPH_CROSS,(4,4)) #np.ones((3,3),np.uint8)
-        op = cv2.erode(thresh_inv,kernel,iterations = 2)
+        if k == 'poor':
+            img = cv2.medianBlur(image,5) 
+            a = img.max()
+            _, thresh = cv2.threshold(img, a/2+60, a,cv2.THRESH_BINARY)
+            thresh_inv = cv2.bitwise_not(thresh)
+            kernel = cv2.getStructuringElement(cv2.MORPH_CROSS,(5,5)) #np.ones((3,3),np.uint8)
+            op = cv2.erode(thresh_inv,kernel,iterations = 2)
 
-        op = cv2.cvtColor(op,cv2.COLOR_BGR2GRAY)
-        binarized = np.where(op>0.1, 1, 0)
-        processed = morphology.remove_small_objects(binarized.astype(bool), min_size=20, connectivity=3).astype(int)
+            op = cv2.cvtColor(op,cv2.COLOR_BGR2GRAY)
+            binarized = np.where(op>0.1, 1, 0)
+            processed = morphology.remove_small_objects(binarized.astype(bool), min_size=30, connectivity=5).astype(int)
 
-        # black out pixels
-        mask_x, mask_y = np.where(processed == 0)
-        op[mask_x, mask_y] = 0
-    #if k == 'good':
-        #    img = cv2.medianBlur(image,5) 
-        #    a = img.max()
-        #    _, thresh = cv2.threshold(img, a/2+60, a,cv2.THRESH_BINARY)
-        #    thresh_inv = cv2.bitwise_not(thresh)
-        #    kernel = cv2.getStructuringElement(cv2.MORPH_CROSS,(5,5)) #np.ones((3,3),np.uint8)
-        #    op = cv2.erode(thresh_inv,kernel,iterations = 2)
-        #    op = cv2.cvtColor(op,cv2.COLOR_BGR2GRAY)
-        #    binarized = np.where(op>0.1, 1, 0)
-        #    processed = morphology.remove_small_objects(binarized.astype(bool), min_size=40, connectivity=10).astype(int)
             # black out pixels
-        #    mask_x, mask_y = np.where(processed == 0)
-        #    op[mask_x, mask_y] = 0
+            mask_x, mask_y = np.where(processed == 0)
+            op[mask_x, mask_y] = 0
+        if k == 'good':
+            img = cv2.medianBlur(image,5) 
+            a = img.max()
+            _, thresh = cv2.threshold(img, a/2+60, a,cv2.THRESH_BINARY)
+            thresh_inv = cv2.bitwise_not(thresh)
+            kernel = cv2.getStructuringElement(cv2.MORPH_CROSS,(5,5)) #np.ones((3,3),np.uint8)
+            op = cv2.erode(thresh_inv,kernel,iterations = 2)
+            op = cv2.cvtColor(op,cv2.COLOR_BGR2GRAY)
+            binarized = np.where(op>0.1, 1, 0)
+            processed = morphology.remove_small_objects(binarized.astype(bool), min_size=30, connectivity=3).astype(int)
+            # black out pixe1
+            mask_x, mask_y = np.where(processed == 0)
+            op[mask_x, mask_y] = 0
         """
             a = img.max()
             _, thresh = cv2.threshold(img, a/2+60, a,cv2.THRESH_BINARY)
@@ -375,11 +375,12 @@ class imagePostProcessing:
         """
 
         #_, thresh = cv2.threshold(op, a/2+60, a,cv2.THRESH_BINARY)
-        cv2.imwrite('/users/swathi/documents/KernelCheckOakTree/_' + imageName,op)
+        cv2.imwrite('/users/swathi/documents/fin/_' + imageName,op)
         return op
 
     def getBoldText(self, l, image, imageName):
         #k = 'good'
+        doc = image.copy()
         image = self.convertToColor(image)
         #thresh = self.getStrokedImage(5,image,imageName)
         textInfo = {}
@@ -388,7 +389,7 @@ class imagePostProcessing:
         charWidth = []
         wordTexts = []
         lineNumbers = []
-        pixelIntensity = []
+        OriginalpixelIntensity = []
         lineIntensityMean = []
         wordVarianceFromLine = []
         left = []
@@ -411,6 +412,11 @@ class imagePostProcessing:
                         charWidth.append(cWidth)
                     else:
                         charWidth.append(0)
+                    (x, y, w, h) = (word['left'], word['top'], word['width'], word['height'])
+                    ROI = doc[y:y + h, x:x + w] 
+                    n_white_pix = np.sum(ROI == doc.max())/ (ROI.shape[0] * ROI.shape[1])
+                    #cv2.putText(image,str(round(n_white_pix * 100,2)), (x - 80, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+                    OriginalpixelIntensity.append(round(n_white_pix * 100))
                     
         textInfo['height'] = height
         textInfo['charWidth'] = charWidth
@@ -419,11 +425,14 @@ class imagePostProcessing:
         textInfo['width'] = width
         #textInfo['pixelIntensity'] = pixelIntensity
         textInfo['wordTexts'] = wordTexts
+        textInfo['OriginalpixelIntensity'] = OriginalpixelIntensity
         
         textInfo['lineNumber'] = lineNumbers
 
         if( 45 <= round(np.median(height))  and round(np.median(charWidth)) >= 21 ):
             k = 'good'
+        elif (np.var(charWidth) <= 20):
+            k = 'poor'
         else:
             k = 'poor'
         pixelIntensity = []
@@ -439,7 +448,7 @@ class imagePostProcessing:
                     pixelIntensity.append(round(n_white_pix * 100))
         textInfo['pixelIntensity'] = pixelIntensity
         percentRank = [stats.percentileofscore(pixelIntensity,pI) for pI in pixelIntensity]
-        #data = pd.DataFrame(textInfo)
+        data = pd.DataFrame(textInfo)
         #d = data.groupby('lineNumber', as_index=False).agg({"pixelIntensity": "mean"}).sort_values('pixelIntensity',ascending = True).reset_index()
         #lineIntensityMean = []
         #wordVarianceFromLine = []
@@ -455,9 +464,9 @@ class imagePostProcessing:
         #if(k == 5):    
         #    for i in range(len(textInfo['wordTexts'])):
         #        if(len(textInfo['wordTexts']) > 1):
-        #           (x, y, w, h) = (textInfo['left'][i], textInfo['top'][i], textInfo['width'][i], textInfo['height'][i])  
+        #          (x, y, w, h) = (textInfo['left'][i], textInfo['top'][i], textInfo['width'][i], textInfo['height'][i])  
         #            if percentRank[i] >= 60: #and data['p'][i] > np.percentile(pixelIntensity,90):#(data['p'][i] > np.percentile(lp,10) or data['isHighIntenseWord'][i] == 1):
-        #                cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 3)
+#                          cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 3)
         #            cv2.putText(image,str(round(percentRank[i],2)), (x - 80, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
         
         #if(k == 4 or k==3):
@@ -478,11 +487,24 @@ class imagePostProcessing:
         groupbyRes = data.groupby('pred', as_index=False).agg({"pixelIntensity": "mean"}).sort_values('pixelIntensity',ascending = True).reset_index()
         idx = groupbyRes[groupbyRes['pred'] == np.median(pred_y)].index
         labelBold = groupbyRes[idx.values[0]+1:]['pred'].values
-        for i in range(len(textInfo['wordTexts'])):
-            (x, y, w, h) = (textInfo['left'][i], textInfo['top'][i], textInfo['width'][i], textInfo['height'][i])
-            if (data['pixelIntensity'][i] > 2):
-                cv2.rectangle(image, (x, y), (x + w, y + h), (255, 0, 0), 3)
-            cv2.putText(image,str(round(data['pred'][i],2)), (x - 80, y), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0), 2)
+        
+        if k == 'good':    
+            for i in range(len(textInfo['wordTexts'])):
+                (x, y, w, h) = (textInfo['left'][i], textInfo['top'][i], textInfo['width'][i], textInfo['height'][i])
+                if (data['pixelIntensity'][i] > 2):
+                    cv2.rectangle(image, (x, y), (x + w, y + h), (255, 0, 0), 3)
+                cv2.putText(image,str(round(data['pred'][i],2)), (x - 80, y), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0), 2)
+            cv2.putText(image,str(round(np.var(data['OriginalpixelIntensity']),2)) + str(k), (100, 200), cv2.FONT_HERSHEY_SIMPLEX, 3, (0,0,0), 4)
+        
+        if k == 'poor':    
+            for i in range(len(textInfo['wordTexts'])):
+                (x, y, w, h) = (textInfo['left'][i], textInfo['top'][i], textInfo['width'][i], textInfo['height'][i])
+                if (data['pred'][i] in labelBold):
+                    cv2.rectangle(image, (x, y), (x + w, y + h), (255, 0, 0), 3)
+                cv2.putText(image,str(round(data['pred'][i],2)), (x - 80, y), cv2.FONT_HERSHEY_SIMPLEX, 2, (0,255,0), 2)
+            cv2.putText(image,str(round(np.var(data['OriginalpixelIntensity']),2)) + str(k), (100, 200), cv2.FONT_HERSHEY_SIMPLEX, 3, (0,0,0), 4)
+            
+    
         #pTotal = [i for i in pixelIntensity if i > 5]
         #checkP = np.percentile(percentRank,85)
         #for i in range(len(textInfo['wordTexts'])):
@@ -492,7 +514,7 @@ class imagePostProcessing:
         #           cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 3)
         #        cv2.putText(image,str(round(percentRank[i],2)), (x - 80, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
 
-        data.to_csv('/users/swathi/documents/KernelCheckOakTree/_' + imageName + '_Features_.csv')
+        #data.to_csv('/users/swathi/documents/fin/_' + imageName + '_Features_.csv')
         return image
 
 

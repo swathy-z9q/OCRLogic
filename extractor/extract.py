@@ -115,7 +115,7 @@ class UnstructuredExtractor:
 
                 #nonEmptyI = [i for i in range(len(d['text'])) if len(d['text'][i]) > 0 and d['conf'][i] >= 60]
                 
-                write_path = "/Users/swathi/documents/KernelCheckOakTree/" + image_name + ".jpg"
+                write_path = "/Users/swathi/documents/fin/" + image_name + ".jpg"
                 cv2.imwrite(write_path, doc)
     
                 #doc = imgPostProcessing.displayImageSentences(s, doc)

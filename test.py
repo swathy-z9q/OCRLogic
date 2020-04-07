@@ -100,9 +100,9 @@ def findTableStructure():
         download_status = S3_Adapter().download(file_path, dest_path)
         #testedFiles     = [i.split('.jpg.jpg')[0] for i in os.listdir("/Users/swathi/documents/BoldOaktree Capital Group LLC")]
         if download_status:
-            directory = "/Users/swathi/Documents/TrainImages"
-            for filename in os.listdir("/Users/swathi/Documents/TrainImages"):
-                if filename == 'Artisan Partners Limited Partnership (Marked Up)_page_3.jpg': #.endswith('.jpg') and filename.find('Artisan') >=0 and filename.split('.jpg'):# and filename + '.jpg' not in test:
+            directory = "/Users/swathi/Documents/Invesco_Asset_Management_Limited"
+            for filename in os.listdir("/Users/swathi/Documents/Invesco_Asset_Management_Limited"):
+                if filename.endswith('.jpg') and filename.split('.jpg'):# and filename + '.jpg' not in test:
                     print(filename,"--Image---")
                     page_path = os.path.join(directory, filename)
                     success = uns_extraction.run_extraction_process(page_path, filename)
